@@ -1,117 +1,198 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <stdbool.h>
-#define ROWS 10
-#define COLUMNS 12
+#include <limits.h>
+#include <locale.h>
 
-void saddle(int arr[ROWS][COLUMNS], int i, int j, bool* flag);
-
-int main() {
-    srand(time(NULL));
-    int arr[ROWS][COLUMNS];
-    int choose;
-    bool flag = false;
-    int isCorrect;
-    printf("If you want to fill the array by yourself, print 1\nIf you want a random array, print 2\nMake a choice: ");
-    scanf_s("%d", &choose);
-    switch (choose) {
-    case 1:
-        printf("Input the matrix elements:\n");
-        for (int i = 0; i < ROWS; i++) {
-            for (int j = 0; j < COLUMNS; j++) {
-                isCorrect = scanf_s("%d", &arr[i][j]);
-                if (isCorrect == 0)
-                {
-                    break;
-                }
-            }
-            if (isCorrect == 0)
-            {
-                printf("Error");
-                break;
-            }
-        }
-        if (isCorrect != 0)
-        {
-            for (int i = 0; i < ROWS; i++)
-            {
-                for (int j = 0; j < COLUMNS; j++)
-                {
-                    saddle(arr, i, j, &flag);
-                }
-            }
-            if (flag == false) { printf("There are no saddle numbers"); }
-        }
-        break;
-    case 2:
-        for (int i = 0; i < ROWS; i++) {
-            for (int j = 0; j < COLUMNS; j++) {
-                arr[i][j] = 30 - rand() % 61;
-                printf("%3d ", arr[i][j]);
-            }
-            printf("\n");
-        }
-        for (int i = 0; i < ROWS; i++)
-        {
-            for (int j = 0; j < COLUMNS; j++)
-            {
-                saddle(arr, i, j, &flag);
-            }
-        }
-        if (flag == false) { printf("There are no saddle numbers"); }
-        break;
-    default:
-        printf("You've put an incorrect value, ERROR\n");
+int safeInputInt()
+{
+    int value;
+    while (scanf_s("%d", &value) != 1)
+    {
+        printf("Неверный ввод. Пожалуйста, введите целое число: ");
+        while (getchar() != '\n');
     }
+    return value;
+}
+
+void fillArr(int** arr, int* size, int* choice)
+{
+    printf("Введите размер массива:\n");
+    *size = safeInputInt();
+    *arr = (int*)malloc(*size * sizeof(int));
+
+    if (*arr == NULL)
+    {
+        printf("Ошибка выделения памяти.\n");
+        exit(1);
+    }
+
+    if (*choice == 1)
+    {
+        srand(time(NULL));
+        for (int i = 0; i < *size; i++)
+        {
+            (*arr)[i] = rand() % 100;
+        }
+    }
+    else if (*choice == 2)
+    {
+        printf("Введите элементы массива:\n");
+        for (int i = 0; i < *size; i++)
+        {
+            (*arr)[i] = safeInputInt();
+        }
+    }
+}
+
+void printArray(int** arr, int* size)
+{
+    printf("Массив: \n");
+    for (int i = 0; i < *size; i++)
+    {
+        printf("%d ", (*arr)[i]);
+    }
+    printf("\n");
+}
+
+void findMinOddElement(int** arr, int* size)
+{
+    // Инициализация переменных для хранения первого и второго минимальных элементов и их индексов
+    int firstMinElement = INT_MAX, secondMinElement = INT_MAX, firstMinIndex = 0, secondMinIndex = 0;
+    int index, currentNumber;
+
+    // Поиск первого минимального элемента и его индекса
+    for (int i = 0; i < *size; i++)
+    {
+        if ((*arr)[i] < firstMinElement)
+        {
+            firstMinElement = (*arr)[i];
+            firstMinIndex = i;
+        }
+    }
+
+    // Поиск второго минимального элемента и его индекса, игнорируя первый минимальный элемент
+    for (int j = 0; j < *size; j++)
+    {
+        if ((*arr)[j] <= secondMinElement && j != firstMinIndex)
+        {
+            secondMinElement = (*arr)[j];
+            secondMinIndex = j;
+        }
+    }
+
+    // Обмен индексов, если первый минимальный элемент находится после второго
+    if (firstMinIndex > secondMinIndex)
+    {
+        int temp;
+        temp = firstMinIndex;
+        firstMinIndex = secondMinIndex;
+        secondMinIndex = temp;
+    }
+
+    // Вычисление количества элементов между первым и вторым минимальными элементами
+    int arraySize = secondMinIndex - firstMinIndex - 1;
+    if (arraySize == 0)
+    {
+        printf("\nНет элементов для сортировки в этом диапазоне\n");
+        return;
+    }
+
+    // Выделение памяти для нового массива, который будет содержать нечетные элементы
+    int* array = (int*)malloc(arraySize * sizeof(int));
+    if (array == NULL)
+    {
+        printf("Ошибка выделения памяти\n");
+        exit(1);
+    }
+
+    // Копирование нечетных элементов в новый массив и замена их в исходном массиве на INT_MAX
+    int newSize = 0;
+    for (int i = firstMinIndex + 1; i < secondMinIndex; i++)
+    {
+        if ((*arr)[i] % 2 != 0)
+        {
+            array[newSize] = (*arr)[i];
+           
+            newSize++;
+        }
+    }
+
+    // Проверка, есть ли нечетные элементы для сортировки
+    if (newSize == 0)
+    {
+        printf("Нет нечетных элементов для сортировки в этом диапазоне\n");
+        free(array);
+        return;
+    }
+
+    // Сортировка нечетных элементов методом вставки
+    for (int i = 1; i < newSize; i++)
+    {
+        index = i;
+        currentNumber = array[i];
+        while (index > 0 && currentNumber < array[index - 1])
+        {
+            array[index] = array[index - 1];
+            index--;
+        }
+        array[index] = currentNumber;
+    }
+
+    // Возвращение отсортированных нечетных элементов на их исходные позиции в массиве
+    int counter = 0;
+    for (int i = firstMinIndex + 1; i < secondMinIndex; i++)
+    {
+        if ((*arr)[i] == INT_MAX)
+        {
+            (*arr)[i] = array[counter];
+            counter++;
+        }
+    }
+    free(array);
+}
+
+int main()
+{
+    setlocale(LC_ALL, "");
+    int endChoice;
+    do
+    {
+        int* arr = NULL;
+        int size = 0, choice = 0;
+
+        printf("Нажмите 1, чтобы заполнить массив случайными числами, или нажмите 2, чтобы заполнить его вручную: ");
+        choice = safeInputInt();
+
+        if (choice != 1 && choice != 2)
+        {
+            printf("Неверный выбор. Пожалуйста, введите 1 или 2.\n");
+        }
+        else
+        {
+            fillArr(&arr, &size, &choice);
+            if (size <= 1 || arr == NULL)
+            {
+                printf("Размер массива %d, сортировка не требуется.\n", size);
+            }
+            else
+            {
+                printArray(&arr, &size);
+                findMinOddElement(&arr, &size);
+                printArray(&arr, &size);
+            }
+            if (arr != NULL)
+            {
+                free(arr);
+            }
+        }
+
+        printf("Нажмите 1, чтобы запустить программу снова, или нажмите 2, чтобы выйти: ");
+        endChoice = safeInputInt();
+        if (endChoice != 1 && endChoice != 2)
+        {
+            printf("Неверный выбор. Пожалуйста, введите 1 или 2.\n");
+        }
+    } while (endChoice != 2);
     return 0;
 }
-void saddle(int arr[ROWS][COLUMNS], int i, int j, bool* flag) {
-    int minrow = 1, maxrow = 1, mincol = 1, maxcol = 1;
-    for (int k = 0; k < COLUMNS; k++) {
-        if (arr[i][k] < arr[i][j]) {
-            minrow = 0;
-        }
-        if (arr[i][k] > arr[i][j]) {
-            maxrow = 0;
-        }
-    }
-    for (int k = 0; k < ROWS; k++) {
-        if (arr[k][j] > arr[i][j]) {
-            maxcol = 0;
-        }
-        if (arr[k][j] < arr[i][j]) {
-            mincol = 0;
-        }
-    }
-    if ((minrow && maxcol) || (maxrow && mincol)) {
-        *flag = true;
-        printf("Saddle point: \n[%d][%d](value: %d)\n", i, j, arr[i][j]);
-    }
-}
-
-/*
-0 1 2 3 4 5 6 7 8 9 10 11
-11 10 9 8 7 6 5 4 3 2 1 12
-10 11 12 5 6 8 9 5 6 2 3 13
-45 5 98 6 2 5 6 78 98 32 12 36
-48 9 5 6 2 56 89 56 4 59 78 65
-7862 98 6 8 8 8 7 9 5 6 3 125
-45 78 96 25 35 64 8 78 95 58 58 58
-45 89 65 89 87 96 56 58 45 25 25 25
-48 58 98 6 5 47 85 98 32 59 59 59
-78 45 89 23 45 12 89 59 89 63 63 63
-*/
-
-/*
-11 12 13 14 15 16 17 18 19 20 21 22
-10 12 20 30 50 40 100 120 360 560 40 74
-9 4545 25947 145 5 56 9 8 4 2 65 9
-8 1 2 3 4 5 6 7 8 9 10 20
-7 80 50 230 10 89 40 8 65 230 20 10
-6 80 50 230 10 89 40 8 65 230 20 10
-5 80 50 230 10 89 40 8 65 230 20 10
-4 80 50 230 10 89 40 8 65 230 20 10
-3 80 50 230 10 89 40 8 65 230 20 10
-2 1 1 1 1 1 1 1 1 1 1 1
-*/
